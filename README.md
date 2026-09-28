@@ -66,7 +66,7 @@ steps:
     with:
       persist-credentials: false
 
-  - uses: CodeAnthem/GHA-LoC-Badge@<full sha>
+  - uses: CodeAnthem/GHA-LoC-Badge@8083233a89463cd93975aab72a63c03d8cfb3880
     id: badge
     with:
       badge: ./output/loc.svg
@@ -76,7 +76,7 @@ steps:
       badge_style: flat
 ```
 
-`<full sha>` is the 40-character commit named by the `v2.0.0` release.
+Pin `8083233a89463cd93975aab72a63c03d8cfb3880`. That commit and the `v2.0.0` tag contain the same action bundle.
 
 ## Publish the badge yourself
 
@@ -93,7 +93,7 @@ steps:
     with:
       persist-credentials: false
 
-  - uses: CodeAnthem/GHA-LoC-Badge@<full sha>
+  - uses: CodeAnthem/GHA-LoC-Badge@8083233a89463cd93975aab72a63c03d8cfb3880
     id: badge
     with:
       badge: ./output/loc.svg
