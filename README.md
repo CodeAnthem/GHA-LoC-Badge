@@ -44,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - name: Count lines
-        uses: CodeAnthem/GHA-LoC-Badge@1852e101b6ff5e805051481e7d3ac755f24d8101
+        uses: CodeAnthem/GHA-LoC-Badge@2447899fb1cf9fa092c09a94006a3508b4d4d911
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
