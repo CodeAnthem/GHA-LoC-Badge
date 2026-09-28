@@ -1,0 +1,186 @@
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { badgen } from 'badgen';
+import { glob } from 'glob';
+
+const READ_CONCURRENCY = 10;
+
+/**
+ * Physical lines. Count `\n` bytes. A final partial line counts.
+ * An empty file is 0. A trailing newline does not add an extra line.
+ */
+export function countLines(fullPath) {
+  return new Promise((resolve, reject) => {
+    let lines = 0;
+    let sawByte = false;
+    let endsWithNewline = false;
+    const stream = fs.createReadStream(fullPath);
+    stream.on('data', (chunk) => {
+      if (chunk.length === 0) return;
+      sawByte = true;
+      let index = -1;
+      while ((index = chunk.indexOf(10, index + 1)) !== -1) lines += 1;
+      endsWithNewline = chunk[chunk.length - 1] === 10;
+    });
+    stream.on('end', () => {
+      if (sawByte && !endsWithNewline) lines += 1;
+      resolve(lines);
+    });
+    stream.on('error', reject);
+  });
+}
+
+export function patternList(value) {
+  if (value == null) return [];
+  return String(value)
+    .split('|')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function expandInclude(pattern) {
+  const extra = [];
+  if (pattern === '**') {
+    extra.push('**/*', '*');
+  } else if (pattern.startsWith('**/')) {
+    const rest = pattern.slice(3);
+    if (rest) extra.push(rest);
+  }
+  return [pattern, ...extra];
+}
+
+function expandIgnore(pattern) {
+  if (pattern.includes('/') || pattern.includes('\\')) return [pattern];
+  return [pattern, `**/${pattern}`, `${pattern}/**`, `**/${pattern}/**`];
+}
+
+function dedupeKey(fullPath) {
+  const resolved = path.resolve(fullPath);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+export async function listFiles(directory, patterns, userIgnore) {
+  const root = path.resolve(directory || './');
+  const include = patterns.flatMap(expandInclude);
+  const ignore = [
+    '.git/**',
+    '**/.git/**',
+    ...userIgnore.flatMap(expandIgnore),
+  ];
+  const matches = await glob(include, {
+    cwd: root,
+    ignore,
+    nodir: true,
+    dot: false,
+    absolute: false,
+  });
+  const seen = new Set();
+  const files = [];
+  for (const rel of matches) {
+    const full = path.resolve(root, rel);
+    const key = dedupeKey(full);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    files.push(full);
+  }
+  return files;
+}
+
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const workers = Math.min(limit, items.length);
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fn(items[index]);
+    }
+  }
+  if (workers === 0) return results;
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return results;
+}
+
+function errorText(err) {
+  if (err instanceof Error) return err.message || err.toString();
+  return String(err);
+}
+
+export async function scan(options = {}) {
+  const started = Date.now();
+  const directory = options.directory || './';
+  const include = patternList(options.patterns);
+  const patterns = include.length > 0 ? include : ['**'];
+  const userIgnore = options.ignore == null ? ['node_modules'] : patternList(options.ignore);
+  const countFile = options.countFile || countLines;
+  const matched = await listFiles(directory, patterns, []);
+  const files = userIgnore.length === 0
+    ? matched
+    : await listFiles(directory, patterns, userIgnore);
+  const ignored = Math.max(0, matched.length - files.length);
+
+  let lines = 0;
+  let counted = 0;
+  await mapLimit(files, READ_CONCURRENCY, async (fullPath) => {
+    try {
+      const fileLines = await countFile(fullPath);
+      lines += fileLines;
+      counted += 1;
+      if (options.debug && options.log) options.log(`Counting: ${fullPath}`);
+    } catch (err) {
+      const message = `Skipping unreadable file ${fullPath}: ${errorText(err)}`;
+      if (options.onFileError) options.onFileError(message);
+    }
+  });
+
+  return {
+    lines,
+    counted,
+    ignored,
+    elapsedMs: Date.now() - started,
+  };
+}
+
+export function renderBadge(lines, config = {}) {
+  const label = config.label || 'Lines of Code';
+  const color = config.color || 'blue';
+  const labelColor = config.labelColor || config.labelcolor || '555';
+  const style = config.style || 'classic';
+  const parsed = config.scale ? Number.parseInt(config.scale, 10) : 1;
+  const scale = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  return badgen({
+    label: String(label),
+    labelColor: String(labelColor),
+    status: Number(lines).toLocaleString('en-US'),
+    color: String(color),
+    style,
+    scale,
+  });
+}
+
+export async function writeBadge(badgePath, lines, badgeOptions = {}) {
+  const svg = renderBadge(lines, badgeOptions);
+  await fsp.mkdir(path.dirname(path.resolve(badgePath)), { recursive: true });
+  await fsp.writeFile(badgePath, svg);
+  return svg;
+}
+
+export async function execute(options, core) {
+  try {
+    const result = await scan(options);
+    const badgePath = options.badge || './badge.svg';
+    await writeBadge(badgePath, result.lines, options.badgeOptions || {});
+    core.setOutput('total_lines', String(result.lines));
+    core.setOutput('ignored_files', String(result.ignored));
+    core.setOutput('counted_files', String(result.counted));
+    core.setOutput('elapsed_ms', String(result.elapsedMs));
+    core.setOutput('output_path', path.resolve(badgePath));
+    core.setOutput('output_dir', path.resolve(path.dirname(badgePath)));
+    return result;
+  } catch (err) {
+    core.setFailed(errorText(err));
+    return null;
+  }
+}

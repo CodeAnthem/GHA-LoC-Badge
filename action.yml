@@ -1,5 +1,5 @@
 name: 'Lines of Code Badge'
-description: 'Generate a badge to display total Lines of Code'
+description: 'Count physical lines and write an SVG badge in the workflow workspace'
 inputs:
   directory:
     description: 'The directory to scan.'
@@ -54,10 +54,12 @@ outputs:
     description: 'The absolute path to the SVG that was generated.'
   output_dir:
     description: 'The absolute path to the directory that contains the output svg.'
+  ignored_files:
+    description: 'How many matching files were excluded by ignore patterns.'
 
 runs:
-  using: 'node12'
-  main: './src/index.js'
+  using: 'node24'
+  main: 'dist/index.js'
 
 branding:
   icon: 'award'  

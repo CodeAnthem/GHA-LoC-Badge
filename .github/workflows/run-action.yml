@@ -1,0 +1,31 @@
+name: Run action
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Count lines
+        id: badge
+        uses: ./
+
+      - name: Assert files were counted
+        run: |
+          set -eu
+          files="${{ steps.badge.outputs.counted_files }}"
+          echo "counted_files=${files}"
+          test "$files" != "0"
+          test -f badge.svg
+          test -n "${{ steps.badge.outputs.total_lines }}"
+          test -n "${{ steps.badge.outputs.output_path }}"
