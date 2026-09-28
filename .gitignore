@@ -1,10 +1,382 @@
-# Logs
-node_modules/
-logs
-*.log
+# --------------------------------------------------------------------------------------------------
+# .gitignore
+# GHA-LoC-Badge
+#
+# Author:     CodeAnthem
+# Created:    2026-09-28
+# Modified:   2026-09-28
+# Version:    v1.0.0
+#
+# Taken from gitignore_template. Enabled rules are the shared defaults.
+# A pattern you can turn on uses one hash. Notes use two hashes, so they stay comments.
+# dist/ stays tracked. GitHub runs dist/index.js.
+# Negation rules in Keep stay last so they win.
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Project Specific
+# Generated badges. The published image is pushed to the images branch.
+# --------------------------------------------------------------------------------------------------
 *.svg
+
+# --------------------------------------------------------------------------------------------------
+# Local scratch
+# Per-repo working notes that are not shipped.
+# --------------------------------------------------------------------------------------------------
+# .wip/
+
+# --------------------------------------------------------------------------------------------------
+# Leak Protection
+# Keys, secrets, identity material, and local-only config. Enabled for every repository.
+# Example env files and public keys are restored in Keep.
+# --------------------------------------------------------------------------------------------------
+secrets/
+*.age
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+keys.txt
+**/age-key.txt
+id_dsa
+id_ecdsa
+id_ecdsa_sk
+id_ed25519
+id_ed25519_sk
+id_rsa
+
+credentials.json
+secrets.json
+service-account.json
+
+.env
+.env.*
+config.local.*
+*.local.json
+*.local.yaml
+*.local.yml
+
+*.secret
+*.secrets
+*.secret.json
+*.secret.yaml
+*.secret.yml
+
+# --------------------------------------------------------------------------------------------------
+# Temp Files
+# Scratch, backups, and caches that should not be tracked.
+# --------------------------------------------------------------------------------------------------
+.tmp/
+tmp/
+temp/
+.cache/
+
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.lock~
+*.un~
+*.pid
+*.pid.lock
+
+# --------------------------------------------------------------------------------------------------
+# Logs
+# --------------------------------------------------------------------------------------------------
+*.log
+logs/
+log/
+nohup.out
+
+# --------------------------------------------------------------------------------------------------
+# Operating System
+# macOS, Windows, and Linux filesystem junk.
+# Installers such as *.msi and *.cab are in Archives and binaries.
+# --------------------------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.localized
+__MACOSX/
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.apdisk
+.AppleDB
+.AppleDesktop
+lost+found
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# --------------------------------------------------------------------------------------------------
+# Editors
+# Swap, backup, and session files are enabled.
+# IDE project directories stay commented so a team can still commit shared settings.
+# Broad Vim swap globs are omitted because they also match SVG files.
+# --------------------------------------------------------------------------------------------------
+*.swp
+*.swo
+*.swn
+*~
+.#*
+\#*\#
+.netrwhist
+Session.vim
+Sessionx.vim
+
+## Vim tag file. Uncomment when this repo has no tracked file or directory named tags.
+# tags
+
+## Emacs build state.
+# *.elc
+# auto-save-list
+# *_flymake.*
+# flycheck_*.el
+# *.~undo-tree~
+# .dir-locals.el
+
+## JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
+.fleet/
+
+## VS Code
+# .vscode/
+# *.code-workspace
+
+## Visual Studio
+# .vs/
+# *.user
+# *.userosscache
+# *.suo
+
+# --------------------------------------------------------------------------------------------------
+# Languages
+# Optional. Uncomment the block that matches this repository.
+# --------------------------------------------------------------------------------------------------
+## --- Node.js ---
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 lerna-debug.log*
-.idea/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.pnpm-store/
+.bun/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.cache-loader/
+
+## --- Python ---
+## Uncomment build/ and dist/ under Build when this repo is packaged.
+## env/ and ENV/ match every directory of that name. Remove them if a source directory is named env.
+# __pycache__/
+# *.py[cod]
+# *$py.class
+# .pytest_cache/
+# .mypy_cache/
+# .ruff_cache/
+# .pyre/
+# .tox/
+# .nox/
+# .coverage
+# .coverage.*
+# htmlcov/
+# .venv/
+# venv/
+# env/
+# ENV/
+# *.egg-info/
+# .eggs/
+# .ipynb_checkpoints/
+
+## --- Java / JVM ---
+## Uncomment target/ under Build.
+## *.jar ignores every jar. Remove that line if this repo tracks third-party jars.
+# .gradle/
+# .gradle-cache/
+# *.class
+# *.jar
+# *.war
+# *.ear
+
+## --- Rust ---
+## Uncomment target/ under Build.
+## Uncomment the next line for a library. An application keeps Cargo.lock tracked.
+# Cargo.lock
+
+## --- Go ---
+## Uncomment bin/ under Build.
+# *.test
+# *.out
+
+## --- .NET / C# ---
+## Uncomment bin/ and obj/ under Build.
+## Visual Studio files are under Editors.
+# *.nupkg
+# packages/
+
+## --- PHP / Composer ---
+## vendor/ ignores every directory of that name, including a Go vendor directory.
+# vendor/
+# composer.phar
+
+## --- Ruby ---
+## tmp/, log/, and coverage/ are already covered above and under Test / coverage.
+# .bundle/
+# vendor/bundle/
+# *.gem
+
+# --------------------------------------------------------------------------------------------------
+# Build / generated output
+# Uncomment the lines this repository generates.
+# --------------------------------------------------------------------------------------------------
+## dist/ stays tracked. GitHub runs dist/index.js.
+# dist/
+# build/
+# out/
+# bin/
+# obj/
+# target/
+# .next/
+# .nuxt/
+# .svelte-kit/
+# .vercel/
+# .netlify/
+# .turbo/
+# storybook-static/
+# *.generated.*
+# *.gen.*
+# site/
+# .public/
+
+# --------------------------------------------------------------------------------------------------
+# Test / coverage
+# --------------------------------------------------------------------------------------------------
+# coverage/
+# .nyc_output/
+# test-results/
+# playwright-report/
+# blob-report/
+# junit.xml
+# TestResults/
+
+# --------------------------------------------------------------------------------------------------
+# Local tooling
+# Version managers and directory-local environments.
+# --------------------------------------------------------------------------------------------------
+# .direnv/
+# .nvmrc.local
+# .tool-versions.local
+# .mise/
+
+# --------------------------------------------------------------------------------------------------
+# Infrastructure
+# --------------------------------------------------------------------------------------------------
+## --- Nix ---
+# result
+# result-*
+
+## --- Terraform ---
+## *.log already ignores crash.log.
+# .terraform/
+# *.tfstate
+# *.tfstate.*
+# *.tfvars
+# *.tfvars.json
+# !*.tfvars.example
+
+## --- Docker ---
+# docker-compose.override.yml
+# docker-compose.local.yml
+
+## --- Cloud local state ---
+# .serverless/
+# .aws-sam/
+# .sam/
+# .chalice/
+
+# --------------------------------------------------------------------------------------------------
+# Databases
+# Local development data.
+# --------------------------------------------------------------------------------------------------
+# *.sqlite
+# *.sqlite3
+# *.db
+# *.db-shm
+# *.db-wal
+
+# --------------------------------------------------------------------------------------------------
+# Archives and binaries
+# Uncomment when this repository should not track downloaded or generated packages.
+# --------------------------------------------------------------------------------------------------
+# *.zip
+# *.tar
+# *.tar.gz
+# *.tgz
+# *.7z
+# *.rar
+# *.dmg
+# *.iso
+# *.exe
+# *.msi
+# *.cab
+# *.msix
+# *.msm
+# *.msp
+# *.deb
+# *.rpm
+
+# --------------------------------------------------------------------------------------------------
+# Media
+# Uncomment when this repository should not track these files.
+# --------------------------------------------------------------------------------------------------
+# *.mp4
+# *.mov
+# *.avi
+# *.mkv
+# *.psd
+# *.ai
+# *.wav
+# *.flac
+
+# --------------------------------------------------------------------------------------------------
+# Keep
+# Templates and public keys. This section stays last so these rules win.
+# A file inside an ignored directory stays ignored. To track an example under secrets/,
+# remove the secrets/ rule and ignore the secret files themselves.
+# --------------------------------------------------------------------------------------------------
+!.gitkeep
+!*.pub
+!.env.example
+!.env.sample
+!.env.template
+!*.example

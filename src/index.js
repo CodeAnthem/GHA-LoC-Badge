@@ -13,6 +13,8 @@ await execute({
   patterns: input('patterns', '**'),
   ignore: input('ignore', 'node_modules'),
   debug: input('debug', 'false') === 'true',
+  ignoreBlankLines: input('ignore_blank_lines', 'true').toLowerCase() !== 'false',
+  badgeBranch: input('badge_branch', '').trim(),
   badgeOptions: {
     label: input('badge_label', 'Lines of Code'),
     color: input('badge_color', 'blue'),

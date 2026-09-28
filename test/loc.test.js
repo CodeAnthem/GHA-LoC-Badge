@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { countLines, execute, renderBadge, scan } from '../src/loc.js';
+import { publishBadge, repositoryUrl, runCommand, validBranch } from '../src/publish.js';
 
 async function withFixture(files, fn) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'loc-'));
@@ -43,6 +44,25 @@ test('counts physical lines, including CRLF and empty files', async () => {
   for (const [bytes, expected] of cases) {
     await withFixture({ 'sample.txt': bytes }, async (dir) => {
       assert.equal(await countLines(path.join(dir, 'sample.txt')), expected);
+    });
+  }
+});
+
+test('blank lines are ignored unless the filter is turned off', async () => {
+  const cases = [
+    [Buffer.from('\n'), 0, 1],
+    [Buffer.from('\n\n'), 0, 2],
+    [Buffer.from('a\n\nb\n'), 2, 3],
+    [Buffer.from('a\n \nb\n'), 2, 3],
+    [Buffer.from('a\n\t\nb'), 2, 3],
+    [Buffer.from('a\r\n\r\nb\r\n'), 2, 3],
+    [Buffer.from('  \n'), 0, 1],
+  ];
+  for (const [bytes, skipped, physical] of cases) {
+    await withFixture({ 'sample.txt': bytes }, async (dir) => {
+      const file = path.join(dir, 'sample.txt');
+      assert.equal(await countLines(file), skipped);
+      assert.equal(await countLines(file, { ignoreBlankLines: false }), physical);
     });
   }
 });
@@ -286,12 +306,11 @@ test('bundled action writes the SVG and GITHUB_OUTPUT', async () => {
   await fs.access(bundle);
   const source = await fs.readFile(bundle, 'utf8');
   assert.match(source, /GITHUB_OUTPUT/);
-  assert.doesNotMatch(source, /git push/);
-  assert.doesNotMatch(source, /GITHUB_TOKEN/);
-  assert.doesNotMatch(source, /github_token/);
+  assert.doesNotMatch(source, /x-access-token/);
+  assert.doesNotMatch(source, /ghp_[A-Za-z0-9]/);
 
   await withFixture({
-    'root.txt': 'a\n',
+    'root.txt': 'a\n\n',
     'src/nested.txt': 'a\nb\n',
   }, async (dir) => {
     const outputFile = path.join(os.tmpdir(), `loc-output-${path.basename(dir)}.txt`);
@@ -301,6 +320,7 @@ test('bundled action writes the SVG and GITHUB_OUTPUT', async () => {
     const env = { ...process.env };
     delete env.GITHUB_TOKEN;
     delete env.GH_TOKEN;
+    delete env.INPUT_BADGE_BRANCH;
     env.GITHUB_OUTPUT = outputFile;
     env.INPUT_DIRECTORY = dir;
     env.INPUT_BADGE = badge;
@@ -334,4 +354,65 @@ test('bundled action writes the SVG and GITHUB_OUTPUT', async () => {
       await fs.rm(outputFile, { force: true });
     }
   });
+});
+
+test('badge_branch accepts a normal branch and rejects the rest', () => {
+  assert.equal(validBranch('images'), true);
+  assert.equal(validBranch('badges/loc'), true);
+  assert.equal(validBranch(''), false);
+  assert.equal(validBranch('-images'), false);
+  assert.equal(validBranch('refs/heads/../master'), false);
+  assert.equal(repositoryUrl('CodeAnthem/GHA-LoC-Badge'), 'https://github.com/CodeAnthem/GHA-LoC-Badge.git');
+  assert.throws(() => repositoryUrl('https://github.com/owner/repo.git'), /owner\/name/);
+});
+
+test('publishing replaces the branch with the badge file only', async () => {
+  await withFixture({ 'out/loc.svg': '<svg>badge</svg>' }, async (dir) => {
+    const remote = path.join(dir, 'remote.git');
+    await runCommand('git', ['init', '--bare', '-b', 'images', remote]);
+    const badgePath = path.join(dir, 'out', 'loc.svg');
+    await publishBadge({
+      badgePath,
+      branch: 'images',
+      remote,
+      env: {},
+    });
+    await fs.writeFile(badgePath, '<svg>next</svg>');
+    await publishBadge({
+      badgePath,
+      branch: 'images',
+      remote,
+      env: {},
+    });
+    const listed = await runCommand('git', ['--git-dir', remote, 'ls-tree', '-r', '--name-only', 'refs/heads/images']);
+    assert.equal(listed.stdout.trim(), 'loc.svg');
+    const count = await runCommand('git', ['--git-dir', remote, 'rev-list', '--count', 'refs/heads/images']);
+    assert.equal(count.stdout.trim(), '1');
+    const shown = await runCommand('git', ['--git-dir', remote, 'show', 'refs/heads/images:loc.svg']);
+    assert.equal(shown.stdout, '<svg>next</svg>');
+  });
+});
+
+test('https publishing without a token fails and command errors hide the token', async () => {
+  await withFixture({ 'loc.svg': '<svg></svg>' }, async (dir) => {
+    await assert.rejects(
+      () => publishBadge({
+        badgePath: path.join(dir, 'loc.svg'),
+        branch: 'images',
+        env: { GITHUB_REPOSITORY: 'owner/repo' },
+      }),
+      /GH_TOKEN/,
+    );
+  });
+  const secret = 'super-secret-token';
+  await assert.rejects(
+    () => runCommand(process.execPath, ['-e', 'process.stderr.write(process.env.GH_TOKEN || ""); process.exit(1)'], {
+      env: { ...process.env, GH_TOKEN: secret },
+    }),
+    (err) => {
+      assert.equal(err.message.includes(secret), false);
+      assert.match(err.message, /\*\*\*/);
+      return true;
+    },
+  );
 });

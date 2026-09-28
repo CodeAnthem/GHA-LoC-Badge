@@ -3,28 +3,59 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { badgen } from 'badgen';
 import { glob } from 'glob';
+import { publishBadge } from './publish.js';
 
 const READ_CONCURRENCY = 10;
 
+function isBlankLine(bytes) {
+  let end = bytes.length;
+  if (end > 0 && bytes[end - 1] === 13) end -= 1;
+  for (let i = 0; i < end; i += 1) {
+    const byte = bytes[i];
+    if (byte !== 32 && byte !== 9) return false;
+  }
+  return true;
+}
+
 /**
- * Physical lines. Count `\n` bytes. A final partial line counts.
+ * Physical lines. A final partial line counts.
  * An empty file is 0. A trailing newline does not add an extra line.
+ * Blank lines are skipped unless `ignoreBlankLines` is false.
+ * A blank line is empty or contains only spaces and tabs.
  */
-export function countLines(fullPath) {
+export function countLines(fullPath, options = {}) {
+  const ignoreBlank = options.ignoreBlankLines !== false;
   return new Promise((resolve, reject) => {
     let lines = 0;
     let sawByte = false;
     let endsWithNewline = false;
+    let pending = Buffer.alloc(0);
     const stream = fs.createReadStream(fullPath);
     stream.on('data', (chunk) => {
       if (chunk.length === 0) return;
       sawByte = true;
-      let index = -1;
-      while ((index = chunk.indexOf(10, index + 1)) !== -1) lines += 1;
-      endsWithNewline = chunk[chunk.length - 1] === 10;
+      if (!ignoreBlank) {
+        let index = -1;
+        while ((index = chunk.indexOf(10, index + 1)) !== -1) lines += 1;
+        endsWithNewline = chunk[chunk.length - 1] === 10;
+        return;
+      }
+      pending = pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
+      let start = 0;
+      let index = pending.indexOf(10);
+      while (index !== -1) {
+        if (!isBlankLine(pending.subarray(start, index))) lines += 1;
+        start = index + 1;
+        index = pending.indexOf(10, start);
+      }
+      pending = Buffer.from(pending.subarray(start));
     });
     stream.on('end', () => {
-      if (sawByte && !endsWithNewline) lines += 1;
+      if (!ignoreBlank) {
+        if (sawByte && !endsWithNewline) lines += 1;
+      } else if (pending.length > 0 && !isBlankLine(pending)) {
+        lines += 1;
+      }
       resolve(lines);
     });
     stream.on('error', reject);
@@ -115,6 +146,7 @@ export async function scan(options = {}) {
   const patterns = include.length > 0 ? include : ['**'];
   const userIgnore = options.ignore == null ? ['node_modules'] : patternList(options.ignore);
   const countFile = options.countFile || countLines;
+  const ignoreBlankLines = options.ignoreBlankLines !== false;
   const matched = await listFiles(directory, patterns, []);
   const files = userIgnore.length === 0
     ? matched
@@ -125,7 +157,7 @@ export async function scan(options = {}) {
   let counted = 0;
   await mapLimit(files, READ_CONCURRENCY, async (fullPath) => {
     try {
-      const fileLines = await countFile(fullPath);
+      const fileLines = await countFile(fullPath, { ignoreBlankLines });
       lines += fileLines;
       counted += 1;
       if (options.debug && options.log) options.log(`Counting: ${fullPath}`);
@@ -178,6 +210,16 @@ export async function execute(options, core) {
     core.setOutput('elapsed_ms', String(result.elapsedMs));
     core.setOutput('output_path', path.resolve(badgePath));
     core.setOutput('output_dir', path.resolve(path.dirname(badgePath)));
+    const branch = String(options.badgeBranch || '').trim();
+    if (branch) {
+      await publishBadge({
+        badgePath,
+        branch,
+        env: options.env || process.env,
+        remote: options.remote,
+        run: options.runCommand,
+      });
+    }
     return result;
   } catch (err) {
     core.setFailed(errorText(err));

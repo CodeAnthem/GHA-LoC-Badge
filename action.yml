@@ -1,5 +1,5 @@
 name: 'Lines of Code Badge'
-description: 'Count physical lines and write an SVG badge in the workflow workspace'
+description: 'Count physical lines and write an SVG badge. Publish that file when badge_branch is set.'
 inputs:
   directory:
     description: 'The directory to scan.'
@@ -41,6 +41,14 @@ inputs:
     description: 'Enable debug logging'
     required: false
     default: 'false'
+  ignore_blank_lines:
+    description: 'Skip blank lines. A line of spaces or tabs is blank. Set to false to count those lines.'
+    required: false
+    default: 'true'
+  badge_branch:
+    description: 'Branch that receives the badge file. Empty skips publishing. Publishing reads GH_TOKEN from the environment and replaces that branch with the badge file only.'
+    required: false
+    default: ''
 
 
 outputs:
